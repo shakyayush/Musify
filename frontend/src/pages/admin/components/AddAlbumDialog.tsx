@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { axiosInstance } from "@/lib/axios";
+import { useMusicStore } from "@/stores/useMusicStore";
+import { useAuth } from "@clerk/clerk-react";
 import { Plus, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -18,6 +20,8 @@ const AddAlbumDialog = () => {
 	const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const { fetchAlbums } = useMusicStore();
+	const { getToken } = useAuth();
 
 	const [newAlbum, setNewAlbum] = useState({
 		title: "",
@@ -42,28 +46,47 @@ const AddAlbumDialog = () => {
 				return toast.error("Please upload an image");
 			}
 
+			// Validate form
+			if (!newAlbum.title || !newAlbum.artist) {
+				return toast.error("Please fill all required fields");
+			}
+
+			// Get a fresh token
+			const token = await getToken({ skipCache: true });
+			
 			const formData = new FormData();
 			formData.append("title", newAlbum.title);
 			formData.append("artist", newAlbum.artist);
 			formData.append("releaseYear", newAlbum.releaseYear.toString());
 			formData.append("imageFile", imageFile);
 
-			await axiosInstance.post("/admin/albums", formData, {
+			const response = await axiosInstance.post("/admin/albums", formData, {
 				headers: {
 					"Content-Type": "multipart/form-data",
+					"Authorization": `Bearer ${token}`
 				},
 			});
 
+			console.log("Album created successfully:", response.data);
+			
+			// Reset form
 			setNewAlbum({
 				title: "",
 				artist: "",
 				releaseYear: new Date().getFullYear(),
 			});
 			setImageFile(null);
+			
+			// Refresh albums list
+			await fetchAlbums();
+			
+			// Close dialog
 			setAlbumDialogOpen(false);
+			
 			toast.success("Album created successfully");
 		} catch (error: any) {
-			toast.error("Failed to create album: " + error.message);
+			console.error("Add album error:", error);
+			toast.error("Failed to create album: " + (error.response?.data?.message || error.message || "Unknown error"));
 		} finally {
 			setIsLoading(false);
 		}

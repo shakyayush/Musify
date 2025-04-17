@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { axiosInstance } from "@/lib/axios";
 import { useMusicStore } from "@/stores/useMusicStore";
+import { useAuth } from "@clerk/clerk-react";
 import { Plus, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -24,9 +25,10 @@ interface NewSong {
 }
 
 const AddSongDialog = () => {
-	const { albums } = useMusicStore();
+	const { albums, fetchSongs } = useMusicStore();
 	const [songDialogOpen, setSongDialogOpen] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
+	const { getToken } = useAuth();
 
 	const [newSong, setNewSong] = useState<NewSong>({
 		title: "",
@@ -51,6 +53,14 @@ const AddSongDialog = () => {
 				return toast.error("Please upload both audio and image files");
 			}
 
+			// Validate form
+			if (!newSong.title || !newSong.artist) {
+				return toast.error("Please fill all required fields");
+			}
+
+			// Get a fresh token
+			const token = await getToken({ skipCache: true });
+			
 			const formData = new FormData();
 
 			formData.append("title", newSong.title);
@@ -63,12 +73,16 @@ const AddSongDialog = () => {
 			formData.append("audioFile", files.audio);
 			formData.append("imageFile", files.image);
 
-			await axiosInstance.post("/admin/songs", formData, {
+			const response = await axiosInstance.post("/admin/songs", formData, {
 				headers: {
 					"Content-Type": "multipart/form-data",
+					"Authorization": `Bearer ${token}`
 				},
 			});
 
+			console.log("Song added successfully:", response.data);
+			
+			// Reset form
 			setNewSong({
 				title: "",
 				artist: "",
@@ -80,9 +94,17 @@ const AddSongDialog = () => {
 				audio: null,
 				image: null,
 			});
+			
+			// Refresh songs list
+			await fetchSongs();
+			
+			// Close dialog
+			setSongDialogOpen(false);
+			
 			toast.success("Song added successfully");
 		} catch (error: any) {
-			toast.error("Failed to add song: " + error.message);
+			console.error("Add song error:", error);
+			toast.error("Failed to add song: " + (error.response?.data?.message || error.message || "Unknown error"));
 		} finally {
 			setIsLoading(false);
 		}

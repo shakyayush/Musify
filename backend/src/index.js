@@ -47,6 +47,9 @@ app.use(
 	})
 );
 
+// Serve static files from frontend/public directory
+app.use(express.static(path.join(__dirname, "../frontend/public")));
+
 // cron jobs
 const tempDir = path.join(process.cwd(), "tmp");
 cron.schedule("0 * * * *", () => {
