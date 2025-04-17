@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useMusicStore } from "@/stores/useMusicStore";
-import { Loader2, Music, Album, Plus } from "lucide-react";
+import { Loader2, Music, Album } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
